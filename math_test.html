@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4학년 3반 수학 단원평가 시스템</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Firebase Mock / Integration Logic
+        // Note: For a truly external site, you would replace these with your actual Firebase config.
+        // For this demo, we'll use the environment's config if available, or a placeholder.
+        const firebaseConfig = window.__firebase_config ? JSON.parse(window.__firebase_config) : {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+
+        const App = () => {
+            const [currentPage, setCurrentPage] = useState('login');
+            const [studentInfo, setStudentInfo] = useState({ number: '', name: '' });
+            const [answers, setAnswers] = useState(Array(20).fill([]));
+            const [resultPassword, setResultPassword] = useState('');
+            const [isSubmitted, setIsSubmitted] = useState(false);
+
+            const CORRECT_ANSWERS = Array(20).fill([1]);
+            const SECRET_PW = "1234";
+
+            const handleLogin = () => {
+                if (!studentInfo.number || !studentInfo.name) {
+                    alert("번호와 이름을 입력해주세요.");
+                    return;
+                }
+                setCurrentPage('waiting');
+            };
+
+            const toggleAnswer = (qIndex, option) => {
+                const newAnswers = [...answers];
+                const current = newAnswers[qIndex];
+                if (current.includes(option)) {
+                    newAnswers[qIndex] = current.filter(item => item !== option);
+                } else {
+                    newAnswers[qIndex] = [...current, option].sort();
+                }
+                setAnswers(newAnswers);
+            };
+
+            const calculateScore = () => {
+                let score = 0;
+                answers.forEach((ans, idx) => {
+                    const correct = CORRECT_ANSWERS[idx];
+                    if (ans.length === correct.length && ans.every((v, i) => v === correct[i])) {
+                        score += 5;
+                    }
+                });
+                return score;
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 md:p-8 flex items-center justify-center">
+                    <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+                        
+                        <header className="bg-indigo-600 p-6 text-white text-center">
+                            <h1 className="text-xl md:text-2xl font-bold italic">4학년 3반 수학 단원평가</h1>
+                            <p className="text-indigo-100 mt-1">5단원 다각형 (독립 실행 모드)</p>
+                        </header>
+
+                        <main className="p-6">
+                            {/* 1. Login */}
+                            {currentPage === 'login' && (
+                                <div className="space-y-6 py-4">
+                                    <div className="text-center mb-8">
+                                        <p className="text-slate-500">본인의 번호와 이름을 입력하고 시작하세요.</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <input 
+                                            type="number" 
+                                            placeholder="번호 (예: 1)"
+                                            className="w-full p-4 bg-slate-100 rounded-2xl text-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                            value={studentInfo.number}
+                                            onChange={(e) => setStudentInfo({...studentInfo, number: e.target.value})}
+                                        />
+                                        <input 
+                                            type="text" 
+                                            placeholder="이름"
+                                            className="w-full p-4 bg-slate-100 rounded-2xl text-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                            value={studentInfo.name}
+                                            onChange={(e) => setStudentInfo({...studentInfo, name: e.target.value})}
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleLogin}
+                                        className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-xl shadow-lg hover:bg-indigo-700 transition-all"
+                                    >
+                                        입장하기
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 2. Waiting */}
+                            {currentPage === 'waiting' && (
+                                <div className="text-center py-12 space-y-8">
+                                    <div className="p-6 bg-yellow-50 rounded-2xl border-2 border-yellow-100">
+                                        <p className="text-xl font-bold text-yellow-700">교사의 지시가 있을 때까지 기다리세요.</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => setCurrentPage('exam')}
+                                        className="bg-green-500 text-white font-bold py-5 px-12 rounded-full text-2xl shadow-xl hover:bg-green-600 active:scale-95 transition-all"
+                                    >
+                                        시험 시작!
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 3. Exam */}
+                            {currentPage === 'exam' && (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center px-2 py-1 border-b">
+                                        <span className="font-bold text-indigo-600">{studentInfo.number}번 {studentInfo.name}</span>
+                                        <span className="text-xs text-slate-400">전 문항 객관식 (중복 가능)</span>
+                                    </div>
+                                    <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
+                                        {Array.from({ length: 20 }).map((_, i) => (
+                                            <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                                <span className="w-6 font-bold text-slate-400">{i + 1}</span>
+                                                <div className="flex flex-1 justify-between">
+                                                    {[1, 2, 3, 4, 5].map(n => (
+                                                        <button
+                                                            key={n}
+                                                            onClick={() => toggleAnswer(i, n)}
+                                                            className={`w-10 h-10 rounded-full border-2 font-bold transition-all ${answers[i].includes(n) ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                        >
+                                                            {n}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button 
+                                        onClick={() => setCurrentPage('confirm')}
+                                        className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-xl"
+                                    >
+                                        답안 제출하기
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Confirm */}
+                            {currentPage === 'confirm' && (
+                                <div className="text-center py-8 space-y-6">
+                                    <h2 className="text-2xl font-bold text-red-500">답안을 제출하시겠습니까?</h2>
+                                    <p className="text-slate-500">제출 후에는 수정이 불가능합니다.</p>
+                                    <div className="flex flex-col gap-3">
+                                        <button 
+                                            onClick={() => setCurrentPage('result_wait')}
+                                            className="w-full bg-red-500 text-white font-bold py-4 rounded-2xl text-xl"
+                                        >
+                                            네, 최종 제출합니다
+                                        </button>
+                                        <button 
+                                            onClick={() => setCurrentPage('exam')}
+                                            className="w-full bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl"
+                                        >
+                                            아니오, 다시 확인할게요
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 4. Result Password */}
+                            {currentPage === 'result_wait' && (
+                                <div className="py-8 space-y-6">
+                                    <div className="text-center space-y-2">
+                                        <h2 className="text-2xl font-bold">{studentInfo.name} 학생, 수고했습니다!</h2>
+                                        <p className="text-slate-400">결과를 확인하려면 선생님이 알려주신 암호를 입력하세요.</p>
+                                    </div>
+                                    <input 
+                                        type="password"
+                                        placeholder="비밀번호 입력"
+                                        className="w-full p-4 bg-slate-100 rounded-2xl text-center text-3xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={resultPassword}
+                                        onChange={(e) => setResultPassword(e.target.value)}
+                                    />
+                                    <button 
+                                        onClick={() => resultPassword === SECRET_PW ? setCurrentPage('result') : alert("비밀번호가 올바르지 않습니다.")}
+                                        className="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl text-xl"
+                                    >
+                                        점수 확인하기
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 5. Final Result */}
+                            {currentPage === 'result' && (
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="bg-indigo-600 text-white p-8 rounded-3xl text-center shadow-xl">
+                                        <p className="text-sm opacity-80 uppercase tracking-tighter">최종 평가 점수</p>
+                                        <div className="text-6xl font-black mt-2">{calculateScore()} <span className="text-2xl">점</span></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 max-h-[40vh] overflow-y-auto p-1">
+                                        {answers.map((ans, idx) => {
+                                            const correct = CORRECT_ANSWERS[idx];
+                                            const isCorrect = ans.length === correct.length && ans.every((v, i) => v === correct[i]);
+                                            return (
+                                                <div key={idx} className={`p-4 rounded-2xl flex justify-between items-center border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                                    <span className="font-bold text-slate-500">{idx + 1}번</span>
+                                                    <span className={`text-2xl font-black ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {isCorrect ? 'O' : 'X'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <button onClick={() => window.location.reload()} className="w-full py-3 text-slate-400 hover:text-indigo-500 transition-colors">
+                                        다시 시작하기 (로그아웃)
+                                    </button>
+                                </div>
+                            )}
+                        </main>
+                        
+                        <footer className="bg-slate-50 p-4 text-center text-[10px] text-slate-400 border-t">
+                            본 페이지는 오프라인 시험 답안 입력 전용으로 제작되었습니다.
+                        </footer>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
